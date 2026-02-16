@@ -19,6 +19,7 @@ import os
 import json
 import numpy as np
 import torch
+from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 import torchvision.transforms as transforms
 from medmnist import PneumoniaMNIST, BreastMNIST, DermaMNIST, PathMNIST
@@ -104,11 +105,24 @@ def inject_symmetric_noise(labels, noise_rate, num_classes=2, seed=42):
 
 
 class NoisyMedMNISTDataset(Dataset):
-    """Wrapper dataset that applies noise to MedMNIST labels"""
+    """Wrapper dataset that applies noise to MedMNIST labels.
 
-    def __init__(self, base_dataset, noisy_labels=None, transform=None):
+    Args:
+        base_dataset: MedMNIST dataset object (contains .imgs and .labels).
+        noisy_labels: If provided, replaces the original labels.
+        aug_transform: Augmentation pipeline applied on PIL images (e.g.
+            RandomCrop + RandomHorizontalFlip + ToTensor).  Must include
+            ToTensor() at the end.  If ``None``, images are simply converted
+            to tensors without augmentation.
+        normalize: A ``transforms.Normalize`` instance applied after the
+            image has been converted to a tensor.
+    """
+
+    def __init__(self, base_dataset, noisy_labels=None,
+                 aug_transform=None, normalize=None):
         self.base_dataset = base_dataset
-        self.transform = transform
+        self.aug_transform = aug_transform
+        self.normalize = normalize
 
         # Get original images and labels
         self.images = base_dataset.imgs
@@ -126,17 +140,29 @@ class NoisyMedMNISTDataset(Dataset):
         image = self.images[idx]
         label = self.labels[idx]
 
-        # Convert to tensor
+        # Convert numpy array to PIL Image for augmentation transforms
         if isinstance(image, np.ndarray):
-            image = torch.from_numpy(image).float() / 255.0
-            if len(image.shape) == 3:
-                image = image.permute(2, 0, 1)
+            if image.ndim == 2:
+                # Grayscale (H, W)
+                pil_image = Image.fromarray(image, mode='L')
+            elif image.shape[2] == 1:
+                # Grayscale stored as (H, W, 1)
+                pil_image = Image.fromarray(image.squeeze(2), mode='L')
             else:
-                image = image.unsqueeze(0)
+                # RGB (H, W, 3)
+                pil_image = Image.fromarray(image, mode='RGB')
+        else:
+            pil_image = image
+
+        # Apply augmentation (includes ToTensor) or just convert to tensor
+        if self.aug_transform is not None:
+            image = self.aug_transform(pil_image)
+        else:
+            image = transforms.ToTensor()(pil_image)
 
         # Apply normalization
-        if self.transform:
-            image = self.transform(image)
+        if self.normalize is not None:
+            image = self.normalize(image)
 
         return image, torch.tensor(label, dtype=torch.long)
 
@@ -170,6 +196,9 @@ def get_dataloaders(dataset='pneumoniamnist', noise_rate=0.0, batch_size=128,
     # Ensure data directory exists
     os.makedirs(data_dir, exist_ok=True)
 
+    # Image size (MedMNIST loaded at 64x64)
+    im_size = 64
+
     # Normalization per channel count
     if in_channels == 1:
         normalize = transforms.Normalize(mean=[0.5], std=[0.5])
@@ -177,6 +206,18 @@ def get_dataloaders(dataset='pneumoniamnist', noise_rate=0.0, batch_size=128,
         normalize = transforms.Normalize(
             mean=[0.5] * in_channels, std=[0.5] * in_channels
         )
+
+    # Data augmentation for training (RandomCrop + RandomHorizontalFlip)
+    train_aug_transform = transforms.Compose([
+        transforms.RandomCrop(im_size, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+    ])
+
+    # Test/val: no augmentation, just convert to tensor
+    test_aug_transform = transforms.Compose([
+        transforms.ToTensor(),
+    ])
 
     # Load dataset splits
     train_dataset = DatasetClass(
@@ -234,9 +275,18 @@ def get_dataloaders(dataset='pneumoniamnist', noise_rate=0.0, batch_size=128,
             json.dump(noise_info, f)
 
     # Create wrapped datasets
-    train_data = NoisyMedMNISTDataset(train_dataset, noisy_labels, normalize)
-    val_data = NoisyMedMNISTDataset(val_dataset, None, normalize)
-    test_data = NoisyMedMNISTDataset(test_dataset, None, normalize)
+    train_data = NoisyMedMNISTDataset(
+        train_dataset, noisy_labels,
+        aug_transform=train_aug_transform, normalize=normalize
+    )
+    val_data = NoisyMedMNISTDataset(
+        val_dataset, None,
+        aug_transform=test_aug_transform, normalize=normalize
+    )
+    test_data = NoisyMedMNISTDataset(
+        test_dataset, None,
+        aug_transform=test_aug_transform, normalize=normalize
+    )
 
     # Create dataloaders
     train_loader = DataLoader(
