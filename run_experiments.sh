@@ -25,7 +25,7 @@ for DATASET in "${DATASETS[@]}"; do
             --dataset $DATASET \
             --noise_rate $noise \
             --weighted_loss \
-            --epochs 100 \
+            --epochs 200 \
             --batch_size 128 \
             --lr 0.01 \
             --seed 42
