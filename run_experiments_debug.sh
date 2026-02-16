@@ -14,7 +14,7 @@ mkdir -p results
 
 # Noise levels to test
 #NOISE_RATES=(0.0 0.2 0.4 0.6)
-NOISE_RATES=(0.0 0.2 )
+NOISE_RATES=(0.0 0.2)
 
 # Run experiments with standard loss
 # echo ""
