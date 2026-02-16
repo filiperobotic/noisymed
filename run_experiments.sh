@@ -1,9 +1,12 @@
 #!/bin/bash
 # Script to run all baseline experiments
-# Usage: bash run_experiments.sh
+# Usage: bash run_experiments.sh [dataset]
+# Example: bash run_experiments.sh breastmnist
+
+DATASET="${1:-pneumoniamnist}"
 
 echo "=============================================="
-echo "Running Baseline Experiments for PneumoniaMNIST"
+echo "Running Baseline Experiments for ${DATASET}"
 echo "=============================================="
 
 # Create results directory
@@ -21,6 +24,7 @@ for noise in "${NOISE_RATES[@]}"; do
     echo ""
     echo ">>> Running with noise_rate = $noise (Standard Loss)"
     python train_baseline.py \
+        --dataset $DATASET \
         --noise_rate $noise \
         --epochs 100 \
         --batch_size 128 \
@@ -37,10 +41,9 @@ for noise in "${NOISE_RATES[@]}"; do
     echo ""
     echo ">>> Running with noise_rate = $noise (Weighted Loss)"
     python train_baseline.py \
+        --dataset $DATASET \
         --noise_rate $noise \
         --weighted_loss \
-        --fn_weight 2.0 \
-        --fp_weight 1.0 \
         --epochs 100 \
         --batch_size 128 \
         --lr 0.01 \
