@@ -30,18 +30,21 @@ DATASET_CONFIG = {
         'class': PneumoniaMNIST,
         'num_classes': 2,
         'in_channels': 1,
+        'positive_class': 1,  # Pneumonia (doente)
         'class_names': {0: 'Normal', 1: 'Pneumonia'},
     },
     'breastmnist': {
         'class': BreastMNIST,
         'num_classes': 2,
         'in_channels': 1,
+        'positive_class': 0,  # Malignant
         'class_names': {0: 'Malignant', 1: 'Normal/Benign'},
     },
     'dermamnist_bin': {
         'class': DermaMNIST,
         'num_classes': 2,
         'in_channels': 3,
+        'positive_class': 1,  # Malignant
         'class_names': {0: 'Benign', 1: 'Malignant'},
         'binarize': {
             'malignant_classes': [0, 1, 4],
@@ -52,6 +55,7 @@ DATASET_CONFIG = {
         'class': PathMNIST,
         'num_classes': 2,
         'in_channels': 3,
+        'positive_class': 1,  # Malignant
         'class_names': {0: 'Benign', 1: 'Malignant'},
         'binarize': {
             'malignant_classes': [7, 8],
@@ -165,6 +169,18 @@ class NoisyMedMNISTDataset(Dataset):
             image = self.normalize(image)
 
         return image, torch.tensor(label, dtype=torch.long)
+
+
+class IndexedNoisyMedMNISTDataset(NoisyMedMNISTDataset):
+    """Same as NoisyMedMNISTDataset but __getitem__ also returns the sample index.
+
+    Returns:
+        (image, label, index)
+    """
+
+    def __getitem__(self, idx):
+        image, label = super().__getitem__(idx)
+        return image, label, idx
 
 
 def get_dataloaders(dataset='pneumoniamnist', noise_rate=0.0, batch_size=128,
@@ -303,3 +319,143 @@ def get_dataloaders(dataset='pneumoniamnist', noise_rate=0.0, batch_size=128,
     )
 
     return train_loader, val_loader, test_loader
+
+
+def get_filter_dataloaders(dataset='pneumoniamnist', noise_rate=0.0,
+                           batch_size=128, seed=42, data_dir='./data'):
+    """Create dataloaders for loss-filter training.
+
+    Returns four loaders:
+        train_loader  – shuffled, with augmentation (image, label, index)
+        eval_loader   – no shuffle, no augmentation (image, label, index)
+                        used to compute per-sample losses for GMM filtering
+        val_loader    – standard validation (image, label)
+        test_loader   – standard test (image, label)
+
+    ``train_loader`` and ``eval_loader`` share the **same** underlying
+    dataset object (same noisy labels) so indices are consistent.
+    """
+    if dataset not in DATASET_CONFIG:
+        raise ValueError(
+            f"Unknown dataset '{dataset}'. "
+            f"Available: {list(DATASET_CONFIG.keys())}"
+        )
+
+    config = DATASET_CONFIG[dataset]
+    DatasetClass = config['class']
+    num_classes = config['num_classes']
+    in_channels = config['in_channels']
+
+    os.makedirs(data_dir, exist_ok=True)
+
+    im_size = 64
+
+    if in_channels == 1:
+        normalize = transforms.Normalize(mean=[0.5], std=[0.5])
+    else:
+        normalize = transforms.Normalize(
+            mean=[0.5] * in_channels, std=[0.5] * in_channels
+        )
+
+    train_aug_transform = transforms.Compose([
+        transforms.RandomCrop(im_size, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+    ])
+    test_aug_transform = transforms.Compose([
+        transforms.ToTensor(),
+    ])
+
+    # Load dataset splits
+    train_dataset = DatasetClass(
+        split='train', transform=None, download=True, root=data_dir, size=64
+    )
+    val_dataset = DatasetClass(
+        split='val', transform=None, download=True, root=data_dir, size=64
+    )
+    test_dataset = DatasetClass(
+        split='test', transform=None, download=True, root=data_dir, size=64
+    )
+
+    # Binarize if needed
+    binarize_cfg = config.get('binarize')
+    if binarize_cfg is not None:
+        malignant_classes = binarize_cfg['malignant_classes']
+        for ds in [train_dataset, val_dataset, test_dataset]:
+            orig = np.array(ds.labels).squeeze().astype(np.int32)
+            ds.labels = np.isin(orig, malignant_classes).astype(np.int32)
+        print(f"\nBinarized labels: malignant classes {malignant_classes}")
+        for name_split, ds in [("Train", train_dataset), ("Val", val_dataset),
+                                ("Test", test_dataset)]:
+            n_mal = int((ds.labels == 1).sum())
+            n_ben = int((ds.labels == 0).sum())
+            total = len(ds.labels)
+            print(f"  {name_split}: Malignant={n_mal} ({100*n_mal/total:.1f}%)"
+                  f" | Benign={n_ben} ({100*n_ben/total:.1f}%)"
+                  f" | Total={total}")
+
+    # Print class distribution
+    original_train_labels = train_dataset.labels.flatten()
+    print(f"\nClass distribution (after binarization if applicable):")
+    for cls_id in range(num_classes):
+        count = int((original_train_labels == cls_id).sum())
+        name = config['class_names'].get(cls_id, f'Class {cls_id}')
+        print(f"  Class {cls_id} ({name}): {count}")
+
+    # Inject noise
+    noisy_labels = None
+    if noise_rate > 0:
+        noisy_labels, noise_mask = inject_symmetric_noise(
+            original_train_labels, noise_rate,
+            num_classes=num_classes, seed=seed
+        )
+        os.makedirs('noise_files', exist_ok=True)
+        noise_info = {
+            'dataset': dataset,
+            'noise_rate': noise_rate,
+            'noise_indices': noise_mask.tolist(),
+            'original_labels': original_train_labels.tolist(),
+            'noisy_labels': noisy_labels.tolist()
+        }
+        noise_path = f'noise_files/{dataset}_noise_{noise_rate}.json'
+        with open(noise_path, 'w') as f:
+            json.dump(noise_info, f)
+
+    # --- Train loader (with augmentation + index) ---
+    train_data = IndexedNoisyMedMNISTDataset(
+        train_dataset, noisy_labels,
+        aug_transform=train_aug_transform, normalize=normalize
+    )
+    # --- Eval loader (no augmentation + index, same dataset for consistent indices) ---
+    eval_data = IndexedNoisyMedMNISTDataset(
+        train_dataset, noisy_labels,
+        aug_transform=test_aug_transform, normalize=normalize
+    )
+    # --- Val / Test (standard, no index) ---
+    val_data = NoisyMedMNISTDataset(
+        val_dataset, None,
+        aug_transform=test_aug_transform, normalize=normalize
+    )
+    test_data = NoisyMedMNISTDataset(
+        test_dataset, None,
+        aug_transform=test_aug_transform, normalize=normalize
+    )
+
+    train_loader = DataLoader(
+        train_data, batch_size=batch_size, shuffle=True,
+        num_workers=4, pin_memory=True
+    )
+    eval_loader = DataLoader(
+        eval_data, batch_size=batch_size, shuffle=False,
+        num_workers=4, pin_memory=True
+    )
+    val_loader = DataLoader(
+        val_data, batch_size=batch_size, shuffle=False,
+        num_workers=4, pin_memory=True
+    )
+    test_loader = DataLoader(
+        test_data, batch_size=batch_size, shuffle=False,
+        num_workers=4, pin_memory=True
+    )
+
+    return train_loader, eval_loader, val_loader, test_loader

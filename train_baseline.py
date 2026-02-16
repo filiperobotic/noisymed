@@ -83,20 +83,25 @@ def get_model(num_classes=2, in_channels=1, pretrained=False):
     return model
 
 
-def compute_confusion_matrix(outputs, targets):
+def compute_confusion_matrix(outputs, targets, positive_class=1):
     """
-    Compute confusion matrix elements
+    Compute confusion matrix elements.
+
+    Args:
+        outputs: model logits (N, num_classes)
+        targets: ground-truth labels (N,)
+        positive_class: which class index is the "positive" (disease/malignant).
+                        Varies per dataset (e.g. breastmnist: positive_class=0).
 
     Returns:
         dict with TP, TN, FP, FN
     """
     _, predicted = torch.max(outputs, 1)
 
-    # Class 0 = Negative, Class 1 = Positive
-    TP = ((predicted == 1) & (targets == 1)).sum().item()
-    TN = ((predicted == 0) & (targets == 0)).sum().item()
-    FP = ((predicted == 1) & (targets == 0)).sum().item()
-    FN = ((predicted == 0) & (targets == 1)).sum().item()
+    TP = ((predicted == positive_class) & (targets == positive_class)).sum().item()
+    TN = ((predicted != positive_class) & (targets != positive_class)).sum().item()
+    FP = ((predicted == positive_class) & (targets != positive_class)).sum().item()
+    FN = ((predicted != positive_class) & (targets == positive_class)).sum().item()
 
     return {'TP': TP, 'TN': TN, 'FP': FP, 'FN': FN}
 
@@ -121,7 +126,8 @@ def compute_bac(cm):
     return (sensitivity + specificity) / 2.0
 
 
-def train_epoch(model, train_loader, optimizer, device, class_weights=None):
+def train_epoch(model, train_loader, optimizer, device, class_weights=None,
+                positive_class=1):
     """Train for one epoch"""
     model.train()
     running_loss = 0.0
@@ -160,12 +166,12 @@ def train_epoch(model, train_loader, optimizer, device, class_weights=None):
     # Compute confusion matrix
     all_outputs = torch.cat(all_outputs)
     all_targets = torch.cat(all_targets)
-    cm = compute_confusion_matrix(all_outputs, all_targets)
+    cm = compute_confusion_matrix(all_outputs, all_targets, positive_class)
 
     return epoch_loss, accuracy, cm
 
 
-def evaluate(model, data_loader, device, class_weights=None):
+def evaluate(model, data_loader, device, class_weights=None, positive_class=1):
     """Evaluate model on validation/test set"""
     model.eval()
     running_loss = 0.0
@@ -200,14 +206,15 @@ def evaluate(model, data_loader, device, class_weights=None):
     # Compute confusion matrix
     all_outputs = torch.cat(all_outputs)
     all_targets = torch.cat(all_targets)
-    cm = compute_confusion_matrix(all_outputs, all_targets)
+    cm = compute_confusion_matrix(all_outputs, all_targets, positive_class)
 
     # Compute BAC
     bac = compute_bac(cm)
 
     # Compute AUC-ROC and AUPRC
-    probs = F.softmax(all_outputs, dim=1)[:, 1].cpu().numpy()
-    targets_np = all_targets.cpu().numpy()
+    # Use P(positive_class) as the score for ROC/PRC
+    probs = F.softmax(all_outputs, dim=1)[:, positive_class].cpu().numpy()
+    targets_np = (all_targets == positive_class).long().cpu().numpy()
     auc_roc = roc_auc_score(targets_np, probs)
     auprc = average_precision_score(targets_np, probs)
 
@@ -222,6 +229,9 @@ def train(args):
     print(f"Using device: {device}")
 
     config = DATASET_CONFIG[args.dataset]
+    positive_class = config.get('positive_class', 1)
+    print(f"Positive class: {positive_class} "
+          f"({config['class_names'].get(positive_class, '?')})")
 
     # Create output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -286,11 +296,15 @@ def train(args):
     for epoch in range(1, args.epochs + 1):
         # Train
         train_loss, train_acc, train_cm = train_epoch(
-            model, train_loader, optimizer, device, class_weights
+            model, train_loader, optimizer, device, class_weights,
+            positive_class=positive_class
         )
 
         # Validate
-        val_loss, val_acc, val_cm, val_bac, val_auc_roc, val_auprc = evaluate(model, val_loader, device, class_weights)
+        val_loss, val_acc, val_cm, val_bac, val_auc_roc, val_auprc = evaluate(
+            model, val_loader, device, class_weights,
+            positive_class=positive_class
+        )
 
         scheduler.step()
 
@@ -326,7 +340,10 @@ def train(args):
     checkpoint = torch.load(os.path.join(output_dir, 'best_model.pth'))
     model.load_state_dict(checkpoint['model_state_dict'])
 
-    test_loss, test_acc, test_cm, test_bac, test_auc_roc, test_auprc = evaluate(model, test_loader, device, class_weights)
+    test_loss, test_acc, test_cm, test_bac, test_auc_roc, test_auprc = evaluate(
+        model, test_loader, device, class_weights,
+        positive_class=positive_class
+    )
 
     # Print final results
     print("\n" + "="*50)
