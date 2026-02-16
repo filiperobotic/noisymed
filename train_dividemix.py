@@ -226,17 +226,20 @@ class LabeledDataset(Dataset):
                  aug_transform=None, normalize=None):
         """
         Args:
-            base_dataset: The underlying MedMNIST dataset (has .imgs, .labels).
+            base_dataset: Dataset wrapper (NoisyMedMNISTDataset or similar)
+                          with .images and .labels attributes.
             indices: clean sample indices.
             soft_labels: if provided, Tensor (len(indices), num_classes) of
                          soft targets. Otherwise use hard noisy labels.
             aug_transform: augmentation pipeline (includes ToTensor).
             normalize: normalization transform.
         """
-        self.images = base_dataset.imgs
+        # Support both .images (NoisyMedMNISTDataset) and .imgs (raw MedMNIST)
+        self.images = getattr(base_dataset, 'images', None)
+        if self.images is None:
+            self.images = base_dataset.imgs
         self.indices = np.array(indices)
-        self.noisy_labels = np.array(base_dataset.labels).flatten() if not hasattr(
-            base_dataset, 'noisy_labels') else base_dataset.labels
+        self.noisy_labels = np.array(base_dataset.labels).flatten()
         self.soft_labels = soft_labels
         self.aug_transform = aug_transform
         self.normalize = normalize
@@ -281,7 +284,9 @@ class UnlabeledDataset(Dataset):
 
     def __init__(self, base_dataset, indices, aug_transform=None,
                  normalize=None):
-        self.images = base_dataset.imgs
+        self.images = getattr(base_dataset, 'images', None)
+        if self.images is None:
+            self.images = base_dataset.imgs
         self.indices = np.array(indices)
         self.aug_transform = aug_transform
         self.normalize = normalize

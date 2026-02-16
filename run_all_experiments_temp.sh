@@ -20,7 +20,8 @@ set -e
 DATASETS=("dermamnist_bin" "pathmnist_bin")
 NOISE_RATES=("0.0" "0.2" "0.4" "0.6")
 #METHODS=("baseline" "coteaching" "gmm_filter" "crass" "dividemix" "unicon" "disc")
-METHODS=( "coteaching" "dividemix" "unicon" "disc"  "crass")
+#METHODS=( "coteaching" "dividemix" "unicon" "disc"  "crass")
+METHODS=(  "dividemix" "unicon" "disc"  "crass")
 
 EPOCHS=200
 BATCH_SIZE=128

@@ -287,7 +287,9 @@ class TwoViewDataset(Dataset):
 
     def __init__(self, base_dataset, indices=None, noisy_labels=None,
                  aug_transform=None, normalize=None):
-        self.images = base_dataset.imgs
+        self.images = getattr(base_dataset, 'images', None)
+        if self.images is None:
+            self.images = base_dataset.imgs
         self.labels = (np.array(noisy_labels).flatten()
                        if noisy_labels is not None
                        else np.array(base_dataset.labels).flatten())
@@ -335,7 +337,9 @@ class LabeledDataset(Dataset):
 
     def __init__(self, base_dataset, indices, noisy_labels=None,
                  aug_transform=None, normalize=None):
-        self.images = base_dataset.imgs
+        self.images = getattr(base_dataset, 'images', None)
+        if self.images is None:
+            self.images = base_dataset.imgs
         self.labels = (np.array(noisy_labels).flatten()
                        if noisy_labels is not None
                        else np.array(base_dataset.labels).flatten())
@@ -378,7 +382,9 @@ class UnlabeledDataset(Dataset):
 
     def __init__(self, base_dataset, indices, aug_transform=None,
                  normalize=None):
-        self.images = base_dataset.imgs
+        self.images = getattr(base_dataset, 'images', None)
+        if self.images is None:
+            self.images = base_dataset.imgs
         self.indices = np.array(indices)
         self.aug_transform = aug_transform
         self.normalize = normalize
