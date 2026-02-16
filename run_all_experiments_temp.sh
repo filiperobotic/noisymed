@@ -17,11 +17,12 @@
 set -e
 
 # ── Configuration ─────────────────────────────────────────────────────────
-DATASETS=("pneumoniamnist" "breastmnist" "dermamnist_bin" "pathmnist_bin")
+DATASETS=("dermamnist_bin" "pathmnist_bin")
 NOISE_RATES=("0.0" "0.2" "0.4" "0.6")
-METHODS=("baseline" "coteaching" "gmm_filter" "crass" "dividemix" "unicon" "disc")
+#METHODS=("baseline" "coteaching" "gmm_filter" "crass" "dividemix" "unicon" "disc")
+METHODS=( "coteaching" "dividemix" "unicon" "disc"  "crass")
 
-EPOCHS=100
+EPOCHS=200
 BATCH_SIZE=128
 LR=0.01
 SEED=42
@@ -59,7 +60,7 @@ DISC_THRESHOLD_INIT=0.5
 
 # CRASS defaults
 CRASS_WARMUP=10
-CRASS_LAMBDA=10
+CRASS_LAMBDA=20
 
 # ── Filter by CLI arguments ──────────────────────────────────────────────
 FILTER_METHOD="${1:-}"
