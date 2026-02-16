@@ -314,6 +314,29 @@ def train(args):
     with open(os.path.join(output_dir, 'results.json'), 'w') as f:
         json.dump(results, f, indent=2)
 
+    # Save results to TXT file
+    txt_path = os.path.join(output_dir, 'results.txt')
+    with open(txt_path, 'w') as f:
+        f.write("=" * 50 + "\n")
+        f.write("EXPERIMENT RESULTS\n")
+        f.write("=" * 50 + "\n\n")
+        f.write(f"Dataset: {args.dataset}\n")
+        f.write(f"Noise Rate: {args.noise_rate}\n")
+        f.write(f"Weighted Loss: {args.weighted_loss}\n")
+        if class_weights is not None:
+            f.write(f"Class Weights: {class_weights.cpu().tolist()}\n")
+        f.write(f"Best Epoch: {best_epoch}\n\n")
+        f.write("-" * 50 + "\n")
+        f.write("VALIDATION RESULTS\n")
+        f.write("-" * 50 + "\n")
+        f.write(f"Accuracy: {best_val_acc:.4f}\n")
+        f.write(f"TP: {best_val_cm['TP']}, TN: {best_val_cm['TN']}, FP: {best_val_cm['FP']}, FN: {best_val_cm['FN']}\n\n")
+        f.write("-" * 50 + "\n")
+        f.write("TEST RESULTS\n")
+        f.write("-" * 50 + "\n")
+        f.write(f"Accuracy: {test_acc:.4f}\n")
+        f.write(f"TP: {test_cm['TP']}, TN: {test_cm['TN']}, FP: {test_cm['FP']}, FN: {test_cm['FN']}\n")
+
     print(f"\nResults saved to: {output_dir}")
 
     return results
