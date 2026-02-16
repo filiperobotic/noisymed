@@ -145,6 +145,9 @@ def get_dataloaders(dataset='pneumoniamnist', noise_rate=0.0, batch_size=128,
     num_classes = config['num_classes']
     in_channels = config['in_channels']
 
+    # Ensure data directory exists
+    os.makedirs(data_dir, exist_ok=True)
+
     # Normalization per channel count
     if in_channels == 1:
         normalize = transforms.Normalize(mean=[0.5], std=[0.5])
