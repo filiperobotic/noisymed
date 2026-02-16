@@ -21,6 +21,7 @@ import torchvision.models as models
 import json
 from datetime import datetime
 
+from sklearn.metrics import roc_auc_score, average_precision_score
 from dataloaders import get_dataloaders, DATASET_CONFIG
 
 
@@ -181,7 +182,13 @@ def evaluate(model, data_loader, device, class_weights=None):
     all_targets = torch.cat(all_targets)
     cm = compute_confusion_matrix(all_outputs, all_targets)
 
-    return epoch_loss, accuracy, cm
+    # Compute AUC-ROC and AUPRC
+    probs = F.softmax(all_outputs, dim=1)[:, 1].cpu().numpy()
+    targets_np = all_targets.cpu().numpy()
+    auc_roc = roc_auc_score(targets_np, probs)
+    auprc = average_precision_score(targets_np, probs)
+
+    return epoch_loss, accuracy, cm, auc_roc, auprc
 
 
 def train(args):
@@ -249,6 +256,8 @@ def train(args):
     best_val_acc = 0.0
     best_epoch = 0
     best_val_cm = None
+    best_val_auc_roc = 0.0
+    best_val_auprc = 0.0
 
     for epoch in range(1, args.epochs + 1):
         # Train
@@ -257,7 +266,7 @@ def train(args):
         )
 
         # Validate
-        val_loss, val_acc, val_cm = evaluate(model, val_loader, device, class_weights)
+        val_loss, val_acc, val_cm, val_auc_roc, val_auprc = evaluate(model, val_loader, device, class_weights)
 
         scheduler.step()
 
@@ -266,6 +275,7 @@ def train(args):
             print(f"\nEpoch [{epoch}/{args.epochs}]")
             print(f"  Train - Loss: {train_loss:.4f}, Acc: {train_acc:.4f}")
             print(f"  Val   - Loss: {val_loss:.4f}, Acc: {val_acc:.4f}")
+            print(f"          AUC-ROC: {val_auc_roc:.4f}, AUPRC: {val_auprc:.4f}")
             print(f"          TP: {val_cm['TP']}, TN: {val_cm['TN']}, FP: {val_cm['FP']}, FN: {val_cm['FN']}")
 
         # Save best model
@@ -273,11 +283,15 @@ def train(args):
             best_val_acc = val_acc
             best_epoch = epoch
             best_val_cm = val_cm
+            best_val_auc_roc = val_auc_roc
+            best_val_auprc = val_auprc
             torch.save({
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
                 'val_acc': val_acc,
                 'val_cm': val_cm,
+                'val_auc_roc': val_auc_roc,
+                'val_auprc': val_auprc,
             }, os.path.join(output_dir, 'best_model.pth'))
 
     # Load best model and evaluate on test set
@@ -286,7 +300,7 @@ def train(args):
     checkpoint = torch.load(os.path.join(output_dir, 'best_model.pth'))
     model.load_state_dict(checkpoint['model_state_dict'])
 
-    test_loss, test_acc, test_cm = evaluate(model, test_loader, device, class_weights)
+    test_loss, test_acc, test_cm, test_auc_roc, test_auprc = evaluate(model, test_loader, device, class_weights)
 
     # Print final results
     print("\n" + "="*50)
@@ -294,10 +308,12 @@ def train(args):
     print("="*50)
     print(f"\nValidation:")
     print(f"  Accuracy: {best_val_acc:.4f}")
+    print(f"  AUC-ROC: {best_val_auc_roc:.4f}, AUPRC: {best_val_auprc:.4f}")
     print(f"  TP: {best_val_cm['TP']}, TN: {best_val_cm['TN']}, FP: {best_val_cm['FP']}, FN: {best_val_cm['FN']}")
 
     print(f"\nTest:")
     print(f"  Accuracy: {test_acc:.4f}")
+    print(f"  AUC-ROC: {test_auc_roc:.4f}, AUPRC: {test_auprc:.4f}")
     print(f"  TP: {test_cm['TP']}, TN: {test_cm['TN']}, FP: {test_cm['FP']}, FN: {test_cm['FN']}")
 
     # Save results
@@ -307,8 +323,8 @@ def train(args):
         'noise_rate': args.noise_rate,
         'weighted_loss': args.weighted_loss,
         'class_weights': class_weights.cpu().tolist() if class_weights is not None else None,
-        'validation': {'accuracy': best_val_acc, **best_val_cm},
-        'test': {'accuracy': test_acc, **test_cm}
+        'validation': {'accuracy': best_val_acc, 'auc_roc': best_val_auc_roc, 'auprc': best_val_auprc, **best_val_cm},
+        'test': {'accuracy': test_acc, 'auc_roc': test_auc_roc, 'auprc': test_auprc, **test_cm}
     }
 
     with open(os.path.join(output_dir, 'results.json'), 'w') as f:
@@ -330,11 +346,15 @@ def train(args):
         f.write("VALIDATION RESULTS\n")
         f.write("-" * 50 + "\n")
         f.write(f"Accuracy: {best_val_acc:.4f}\n")
+        f.write(f"AUC-ROC: {best_val_auc_roc:.4f}\n")
+        f.write(f"AUPRC: {best_val_auprc:.4f}\n")
         f.write(f"TP: {best_val_cm['TP']}, TN: {best_val_cm['TN']}, FP: {best_val_cm['FP']}, FN: {best_val_cm['FN']}\n\n")
         f.write("-" * 50 + "\n")
         f.write("TEST RESULTS\n")
         f.write("-" * 50 + "\n")
         f.write(f"Accuracy: {test_acc:.4f}\n")
+        f.write(f"AUC-ROC: {test_auc_roc:.4f}\n")
+        f.write(f"AUPRC: {test_auprc:.4f}\n")
         f.write(f"TP: {test_cm['TP']}, TN: {test_cm['TN']}, FP: {test_cm['FP']}, FN: {test_cm['FN']}\n")
 
     print(f"\nResults saved to: {output_dir}")
