@@ -4,6 +4,8 @@ Dataloaders for MedMNIST datasets with noisy label support.
 Supported datasets:
     - pneumoniamnist: Chest X-Ray (grayscale, 2 classes)
     - breastmnist: Breast Ultrasound (grayscale, 2 classes)
+    - dermamnist_bin: DermaMNIST binarized (RGB, 2 classes) — Malignant vs Benign
+    - pathmnist_bin: PathMNIST binarized (RGB, 2 classes) — Malignant vs Benign
 
 Usage:
     from dataloaders import get_dataloaders, DATASET_CONFIG
@@ -19,7 +21,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
 import torchvision.transforms as transforms
-from medmnist import PneumoniaMNIST, BreastMNIST
+from medmnist import PneumoniaMNIST, BreastMNIST, DermaMNIST, PathMNIST
 
 
 DATASET_CONFIG = {
@@ -34,6 +36,26 @@ DATASET_CONFIG = {
         'num_classes': 2,
         'in_channels': 1,
         'class_names': {0: 'Malignant', 1: 'Normal/Benign'},
+    },
+    'dermamnist_bin': {
+        'class': DermaMNIST,
+        'num_classes': 2,
+        'in_channels': 3,
+        'class_names': {0: 'Benign', 1: 'Malignant'},
+        'binarize': {
+            'malignant_classes': [0, 1, 4],
+            'benign_classes': [2, 3, 5, 6],
+        },
+    },
+    'pathmnist_bin': {
+        'class': PathMNIST,
+        'num_classes': 2,
+        'in_channels': 3,
+        'class_names': {0: 'Benign', 1: 'Malignant'},
+        'binarize': {
+            'malignant_classes': [7, 8],
+            'benign_classes': [0, 1, 2, 3, 4, 5, 6],
+        },
     },
 }
 
@@ -167,9 +189,24 @@ def get_dataloaders(dataset='pneumoniamnist', noise_rate=0.0, batch_size=128,
         split='test', transform=None, download=True, root=data_dir, size=64
     )
 
+    # Binarize labels if needed (for multi-class datasets mapped to binary)
+    binarize_cfg = config.get('binarize')
+    if binarize_cfg is not None:
+        malignant_classes = binarize_cfg['malignant_classes']
+        for ds in [train_dataset, val_dataset, test_dataset]:
+            orig = np.array(ds.labels).squeeze().astype(np.int32)
+            ds.labels = np.isin(orig, malignant_classes).astype(np.int32)
+        print(f"\nBinarized labels: malignant classes {malignant_classes}")
+        for name_split, ds in [("Train", train_dataset), ("Val", val_dataset), ("Test", test_dataset)]:
+            n_mal = int((ds.labels == 1).sum())
+            n_ben = int((ds.labels == 0).sum())
+            total = len(ds.labels)
+            print(f"  {name_split}: Malignant={n_mal} ({100*n_mal/total:.1f}%) | "
+                  f"Benign={n_ben} ({100*n_ben/total:.1f}%) | Total={total}")
+
     # Print class distribution
     original_train_labels = train_dataset.labels.flatten()
-    print(f"\nOriginal class distribution:")
+    print(f"\nClass distribution (after binarization if applicable):")
     for cls_id in range(num_classes):
         count = int((original_train_labels == cls_id).sum())
         name = config['class_names'].get(cls_id, f'Class {cls_id}')
