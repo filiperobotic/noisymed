@@ -2,32 +2,41 @@
 Unified Training Script — dispatches to individual method implementations.
 
 Supported methods:
-    - baseline:   Standard CE + optional weighted loss
-    - coteaching: Co-teaching (Han et al., NeurIPS 2018)
-    - gmm_filter: GMM-based loss filtering
-    - crass:      CRASS — Clinical Risk-Aware Sample Selection (Proposed)
-    - dividemix:  DivideMix (Li et al., ICLR 2020)
-    - unicon:     UNICON (Karim et al., CVPR 2022)
-    - disc:       DISC (Li et al., CVPR 2023)
+    - baseline:           Standard CE + optional weighted loss
+    - coteaching:         Co-teaching (Han et al., NeurIPS 2018)
+    - gmm_filter:         GMM-based loss filtering
+    - crass:              CRASS — Clinical Risk-Aware Sample Selection (Proposed)
+    - dividemix:          DivideMix (Li et al., ICLR 2020)
+    - unicon:             UNICON (Karim et al., CVPR 2022)
+    - disc:               DISC (Li et al., CVPR 2023)
+    - gmm_filter_crass:   GMM Filter + CRASS (Proposed)
+    - dividemix_crass:    DivideMix + CRASS (Proposed)
+    - disc_crass:         DISC + CRASS (Proposed)
 
 Usage:
     python train.py --method baseline --dataset pneumoniamnist --noise_rate 0.2
     python train.py --method coteaching --dataset breastmnist --noise_rate 0.4
     python train.py --method crass --dataset pneumoniamnist --noise_rate 0.2 --lambda_risk 10
     python train.py --method dividemix --dataset dermamnist_bin --noise_rate 0.2 --weighted_loss
+    python train.py --method gmm_filter_crass --dataset pneumoniamnist --noise_rate 0.2 --lambda_risk 20
+    python train.py --method dividemix_crass --dataset pneumoniamnist --noise_rate 0.2 --lambda_risk 20
+    python train.py --method disc_crass --dataset pneumoniamnist --noise_rate 0.2 --lambda_risk 20
 """
 
 import sys
 import importlib
 
 METHODS = {
-    'baseline':    'train_baseline',
-    'coteaching':  'train_coteaching',
-    'gmm_filter':  'train_filter_loss',
-    'crass':       'train_crass',
-    'dividemix':   'train_dividemix',
-    'unicon':      'train_unicon',
-    'disc':        'train_disc',
+    'baseline':         'train_baseline',
+    'coteaching':       'train_coteaching',
+    'gmm_filter':       'train_filter_loss',
+    'crass':            'train_crass',
+    'dividemix':        'train_dividemix',
+    'unicon':           'train_unicon',
+    'disc':             'train_disc',
+    'gmm_filter_crass': 'train_gmm_filter_crass',
+    'dividemix_crass':  'train_dividemix_crass',
+    'disc_crass':       'train_disc_crass',
 }
 
 
