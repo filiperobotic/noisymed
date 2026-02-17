@@ -227,15 +227,36 @@ def gmm_divide_crass(losses, labels, all_loss_history, noise_rate,
         cls_clean = prob_clean[cls_idx] > threshold
         clean_mask[cls_idx] = cls_clean
 
+        # Also compute what standard threshold (0.5) would give
+        cls_clean_standard = prob_clean[cls_idx] > 0.5
+
         is_positive = (cls == positive_class)
         n_clean = int(cls_clean.sum())
+        n_clean_standard = int(cls_clean_standard.sum())
+
+        # Debug: probability distribution stats
+        cls_probs = prob_clean[cls_idx]
+        n_between = int(((cls_probs > threshold) & (cls_probs <= 0.5)).sum()) if threshold < 0.5 else 0
+
         filter_info['per_class'][cls] = {
             'total': len(cls_idx),
             'clean': n_clean,
+            'clean_if_standard_0.5': n_clean_standard,
+            'extra_kept_by_crass': n_clean - n_clean_standard,
+            'n_prob_between_theta_and_0.5': n_between,
             'noisy': len(cls_idx) - n_clean,
             'threshold': threshold,
             'is_positive_class': is_positive,
             'gmm_means': gmm.means_.flatten().tolist(),
+            'prob_clean_stats': {
+                'min': float(cls_probs.min()),
+                'max': float(cls_probs.max()),
+                'mean': float(cls_probs.mean()),
+                'std': float(cls_probs.std()),
+                'pct_below_0.1': float((cls_probs < 0.1).sum() / len(cls_probs)),
+                'pct_below_0.5': float((cls_probs < 0.5).sum() / len(cls_probs)),
+                'pct_above_0.9': float((cls_probs > 0.9).sum() / len(cls_probs)),
+            },
         }
 
     clean_indices = np.where(clean_mask)[0]
@@ -875,9 +896,13 @@ def train_main(args):
                     fi = epoch_filter_info[net_key]
                     for cls, info in sorted(fi['per_class'].items()):
                         pos_tag = " (pos)" if info['is_positive_class'] else " (neg)"
+                        extra = info.get('extra_kept_by_crass', 0)
+                        n_between = info.get('n_prob_between_theta_and_0.5', 0)
                         print(f"                 {net_key} class {cls}{pos_tag}: "
                               f"clean={info['clean']}/{info['total']} "
-                              f"theta*={info['threshold']:.4f}")
+                              f"theta*={info['threshold']:.4f}  "
+                              f"[std@0.5={info.get('clean_if_standard_0.5', '?')}, "
+                              f"extra={extra}, between={n_between}]")
 
         # Best model (by ensemble BAC)
         if val_bac > best_val_bac:

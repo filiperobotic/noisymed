@@ -238,17 +238,26 @@ def disc_select_and_correct_crass(confidence, memorization, teacher_preds,
                                   lambda_risk, positive_class=1):
     """DISC sample selection and label correction with CRASS thresholds.
 
-    Extends standard DISC by making the threshold class-aware:
-        - For positive-class (disease) samples: use a more permissive
-          threshold derived from CRASS (Proposition 1), making it harder
-          to discard positive samples (reducing FN).
-        - For negative-class (normal) samples: use the standard threshold.
+    Extends standard DISC by making the **discard** threshold class-aware:
+        - For positive-class (disease) samples: the discard threshold is
+          lowered (more permissive), making it harder to discard positive
+          samples and thus reducing false negatives.
+        - For negative-class (normal) samples: unchanged from original DISC.
 
-    The CRASS modification scales the DISC dynamic threshold by a per-class
-    factor:
-        - Positive class: threshold is scaled by theta_pos / theta_neg
-          (ratio < 1 when lambda > 1, making threshold smaller)
-        - Negative class: threshold unchanged (scale = 1.0)
+    **Key insight**: CRASS only scales the *discard* threshold, NOT the
+    *clean* threshold. In the original DISC the clean threshold is
+    ``1 - discard_threshold``, creating a symmetric pair. With CRASS we
+    break this symmetry for positive-class samples:
+
+        - Discard threshold (positive):  scaled down by theta_pos / theta_neg
+          → harder to discard positive samples (fewer FN in training data)
+        - Clean threshold (positive):    kept at the standard ``1 - base_threshold``
+          → teacher correction still works normally for positive samples
+
+    This ensures that:
+        1. Fewer positive samples are discarded (reduces FN),
+        2. Positive samples can still receive corrected teacher labels,
+        3. Negative class is treated identically to standard DISC.
 
     Args:
         confidence:     Tensor (N,) — teacher confidence for noisy label.
@@ -274,26 +283,31 @@ def disc_select_and_correct_crass(confidence, memorization, teacher_preds,
     # CRASS: compute optimal thresholds
     theta_neg, theta_pos = compute_optimal_thresholds(lambda_risk)
 
-    # Per-class scaling factor for the DISC dynamic threshold
+    # Per-class scaling factor for the DISCARD threshold only
     # For positive class: scale = theta_pos / theta_neg (< 1 when lambda > 1)
-    # This makes the threshold more permissive for positive-class samples
-    crass_scale = torch.ones(n_samples)
+    # This makes the discard threshold more permissive for positive-class samples
+    crass_discard_scale = torch.ones(n_samples)
     pos_mask = torch.tensor(noisy_labels == positive_class)
     if theta_neg > 0:
-        crass_scale[pos_mask] = theta_pos / theta_neg
+        crass_discard_scale[pos_mask] = theta_pos / theta_neg
 
     # Dynamic schedule (same as original DISC)
     schedule = max(0.5, 1.0 - (epoch / total_epochs))
 
-    # Per-sample dynamic threshold with CRASS scaling
-    # Original DISC: thresholds = threshold_init * (1 - memorization) * schedule
-    # CRASS DISC:    thresholds = threshold_init * (1 - memorization) * schedule * crass_scale
-    thresholds = threshold_init * (1.0 - memorization) * schedule * crass_scale
+    # Base threshold (same as original DISC)
+    base_thresholds = threshold_init * (1.0 - memorization) * schedule
+
+    # CRASS: scale only the DISCARD threshold for positive-class samples
+    discard_thresholds = base_thresholds * crass_discard_scale
+
+    # Clean threshold uses the UNSCALED base threshold for ALL classes
+    # This preserves teacher correction for positive-class samples
+    clean_thresholds = 1.0 - base_thresholds
 
     # Categorize
-    clean_mask = confidence > (1.0 - thresholds)     # High confidence
-    discard_mask = confidence < thresholds             # Low confidence
-    ambiguous_mask = ~clean_mask & ~discard_mask       # In between
+    clean_mask = confidence > clean_thresholds        # High confidence → teacher label
+    discard_mask = confidence < discard_thresholds     # Low confidence → discard
+    ambiguous_mask = ~clean_mask & ~discard_mask       # In between → keep noisy label
 
     # Selected = clean + ambiguous
     selected_mask = clean_mask | ambiguous_mask
@@ -312,6 +326,10 @@ def disc_select_and_correct_crass(confidence, memorization, teacher_preds,
     n_neg = int((noisy_labels != positive_class).sum())
     pos_selected = int(selected_mask[pos_mask].sum())
     neg_selected = int(selected_mask[~pos_mask].sum())
+    pos_clean = int(clean_mask[pos_mask].sum())
+    neg_clean = int(clean_mask[~pos_mask].sum())
+    pos_discarded = int(discard_mask[pos_mask].sum())
+    neg_discarded = int(discard_mask[~pos_mask].sum())
 
     disc_info = {
         'clean': int(clean_mask.sum()),
@@ -324,16 +342,20 @@ def disc_select_and_correct_crass(confidence, memorization, teacher_preds,
         'lambda_risk': lambda_risk,
         'theta_neg': theta_neg,
         'theta_pos': theta_pos,
-        'crass_scale_pos': float(theta_pos / theta_neg) if theta_neg > 0 else 1.0,
+        'crass_discard_scale_pos': float(theta_pos / theta_neg) if theta_neg > 0 else 1.0,
         'per_class': {
             'positive': {
                 'total': n_pos,
                 'selected': pos_selected,
+                'clean': pos_clean,
+                'discarded': pos_discarded,
                 'keep_ratio': pos_selected / n_pos if n_pos > 0 else 0.0,
             },
             'negative': {
                 'total': n_neg,
                 'selected': neg_selected,
+                'clean': neg_clean,
+                'discarded': neg_discarded,
                 'keep_ratio': neg_selected / n_neg if n_neg > 0 else 0.0,
             },
         },
@@ -744,14 +766,19 @@ def train_main(args):
                       f"ambiguous={disc_info['ambiguous']}, "
                       f"discarded={disc_info['discarded']}")
                 print(f"          avg_conf={disc_info['avg_confidence']:.4f}, "
-                      f"avg_mem={disc_info['avg_memorization']:.4f}")
+                      f"avg_mem={disc_info['avg_memorization']:.4f}, "
+                      f"discard_scale_pos={disc_info['crass_discard_scale_pos']:.4f}")
                 pc = disc_info['per_class']
                 print(f"          Positive class: kept "
                       f"{pc['positive']['selected']}/{pc['positive']['total']} "
-                      f"({pc['positive']['keep_ratio']:.1%})")
+                      f"({pc['positive']['keep_ratio']:.1%})  "
+                      f"[clean={pc['positive']['clean']}, "
+                      f"discard={pc['positive']['discarded']}]")
                 print(f"          Negative class: kept "
                       f"{pc['negative']['selected']}/{pc['negative']['total']} "
-                      f"({pc['negative']['keep_ratio']:.1%})")
+                      f"({pc['negative']['keep_ratio']:.1%})  "
+                      f"[clean={pc['negative']['clean']}, "
+                      f"discard={pc['negative']['discarded']}]")
 
         # Best model
         if val_bac > best_val_bac:
