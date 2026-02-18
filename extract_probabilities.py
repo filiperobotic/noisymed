@@ -80,16 +80,24 @@ class ResNet18WithProjection(nn.Module):
 #   model_class: which model constructor to use
 
 METHOD_INFO = {
-    'baseline':          {'model_type': 'single',          'state_key': 'model_state_dict',   'model_class': 'resnet18'},
-    'coteaching':        {'model_type': 'dual',            'state_key': ('model1_state_dict', 'model2_state_dict'), 'model_class': 'resnet18'},
-    'filter_loss':       {'model_type': 'single',          'state_key': 'model_state_dict',   'model_class': 'resnet18'},
-    'crass':             {'model_type': 'single',          'state_key': 'model_state_dict',   'model_class': 'resnet18'},
-    'dividemix':         {'model_type': 'dual',            'state_key': ('model1_state_dict', 'model2_state_dict'), 'model_class': 'resnet18'},
-    'unicon':            {'model_type': 'dual',            'state_key': ('model1_state_dict', 'model2_state_dict'), 'model_class': 'unicon'},
-    'disc':              {'model_type': 'student_teacher',  'state_key': 'student_state_dict', 'model_class': 'resnet18'},
-    'gmm_filter_crass':  {'model_type': 'single',          'state_key': 'model_state_dict',   'model_class': 'resnet18'},
-    'dividemix_crass':   {'model_type': 'dual',            'state_key': ('model1_state_dict', 'model2_state_dict'), 'model_class': 'resnet18'},
-    'disc_crass':        {'model_type': 'student_teacher',  'state_key': 'student_state_dict', 'model_class': 'resnet18'},
+    'baseline':              {'model_type': 'single',          'state_key': 'model_state_dict',   'model_class': 'resnet18'},
+    'coteaching':            {'model_type': 'dual',            'state_key': ('model1_state_dict', 'model2_state_dict'), 'model_class': 'resnet18'},
+    'coteaching_crass':      {'model_type': 'dual',            'state_key': ('model1_state_dict', 'model2_state_dict'), 'model_class': 'resnet18'},
+    'filter_loss':           {'model_type': 'single',          'state_key': 'model_state_dict',   'model_class': 'resnet18'},
+    'crass':                 {'model_type': 'single',          'state_key': 'model_state_dict',   'model_class': 'resnet18'},
+    'crass_adaptive':        {'model_type': 'single',          'state_key': 'model_state_dict',   'model_class': 'resnet18'},
+    'dividemix':             {'model_type': 'dual',            'state_key': ('model1_state_dict', 'model2_state_dict'), 'model_class': 'resnet18'},
+    'unicon':                {'model_type': 'dual',            'state_key': ('model1_state_dict', 'model2_state_dict'), 'model_class': 'unicon'},
+    'disc':                  {'model_type': 'student_teacher',  'state_key': 'student_state_dict', 'model_class': 'resnet18'},
+    'gmm_filter_crass':      {'model_type': 'single',          'state_key': 'model_state_dict',   'model_class': 'resnet18'},
+    'dividemix_crass':       {'model_type': 'dual',            'state_key': ('model1_state_dict', 'model2_state_dict'), 'model_class': 'resnet18'},
+    'disc_crass':            {'model_type': 'student_teacher',  'state_key': 'student_state_dict', 'model_class': 'resnet18'},
+    # Cost-Sensitive variants
+    'baseline_cs':           {'model_type': 'single',          'state_key': 'model_state_dict',   'model_class': 'resnet18'},
+    'baseline_cs_adaptive':  {'model_type': 'single',          'state_key': 'model_state_dict',   'model_class': 'resnet18'},
+    'crass_cs':              {'model_type': 'single',          'state_key': 'model_state_dict',   'model_class': 'resnet18'},
+    'coteaching_cs':         {'model_type': 'dual',            'state_key': ('model1_state_dict', 'model2_state_dict'), 'model_class': 'resnet18'},
+    'crass_adaptive_cs':     {'model_type': 'single',          'state_key': 'model_state_dict',   'model_class': 'resnet18'},
 }
 
 
@@ -105,6 +113,9 @@ def infer_method(dir_name):
     # Order matters: check more specific patterns first
     ordered_keys = [
         'gmm_filter_crass', 'dividemix_crass', 'disc_crass',
+        'coteaching_crass', 'coteaching_cs',
+        'crass_adaptive_cs', 'crass_adaptive',
+        'crass_cs', 'baseline_cs_adaptive', 'baseline_cs',
         'filter_loss', 'coteaching', 'dividemix', 'unicon',
         'disc', 'crass', 'baseline',
     ]

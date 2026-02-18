@@ -154,6 +154,13 @@ METHOD_DISPLAY = {
     'gmm_filter_crass': 'GMM+CRASS',
     'dividemix_crass': 'DivideMix+CRASS',
     'disc_crass': 'DISC+CRASS',
+    'crass_adaptive': 'CRASS Adaptive',
+    'coteaching_crass': 'CT+CRASS',
+    'baseline_cs': 'Baseline+CS',
+    'baseline_cs_adaptive': 'Baseline+CS-A',
+    'crass_cs': 'CRASS+CS',
+    'coteaching_cs': 'CT+CS',
+    'crass_adaptive_cs': 'CRASS-A+CS',
 }
 
 

@@ -22,7 +22,11 @@ from collections import defaultdict
 # Method display names and order
 METHOD_ORDER = [
     'baseline', 'coteaching', 'filter_loss_gmm', 'crass',
-    'dividemix', 'unicon', 'disc'
+    'dividemix', 'unicon', 'disc',
+    'gmm_filter_crass', 'dividemix_crass', 'disc_crass',
+    'crass_adaptive', 'coteaching_crass',
+    'baseline_cs', 'baseline_cs_adaptive',
+    'crass_cs', 'coteaching_cs', 'crass_adaptive_cs',
 ]
 METHOD_DISPLAY = {
     'baseline': 'Baseline+WL',
@@ -32,17 +36,37 @@ METHOD_DISPLAY = {
     'dividemix': 'DivideMix',
     'unicon': 'UNICON',
     'disc': 'DISC',
+    'gmm_filter_crass': 'GMM+CRASS',
+    'dividemix_crass': 'DivideMix+CRASS',
+    'disc_crass': 'DISC+CRASS',
+    'crass_adaptive': 'CRASS Adaptive',
+    'coteaching_crass': 'CT+CRASS',
+    'baseline_cs': 'Baseline+CS',
+    'baseline_cs_adaptive': 'Baseline+CS-A',
+    'crass_cs': 'CRASS+CS',
+    'coteaching_cs': 'CT+CS',
+    'crass_adaptive_cs': 'CRASS-A+CS',
 }
 
 # For experiments that don't set a method field, infer from dir name
 DIR_TO_METHOD = {
+    'baseline_cs_adaptive': 'baseline_cs_adaptive',
+    'baseline_cs': 'baseline_cs',
     'baseline': 'baseline',
+    'coteaching_crass': 'coteaching_crass',
+    'coteaching_cs': 'coteaching_cs',
     'coteaching': 'coteaching',
     'filter_loss': 'filter_loss_gmm',
     'filter': 'filter_loss_gmm',
+    'gmm_filter_crass': 'gmm_filter_crass',
+    'crass_adaptive_cs': 'crass_adaptive_cs',
+    'crass_adaptive': 'crass_adaptive',
+    'crass_cs': 'crass_cs',
     'crass': 'crass',
+    'dividemix_crass': 'dividemix_crass',
     'dividemix': 'dividemix',
     'unicon': 'unicon',
+    'disc_crass': 'disc_crass',
     'disc': 'disc',
 }
 

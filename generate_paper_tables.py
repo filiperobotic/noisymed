@@ -24,6 +24,9 @@ METHOD_ORDER = [
     'baseline', 'coteaching', 'filter_loss', 'crass',
     'dividemix', 'unicon', 'disc',
     'gmm_filter_crass', 'dividemix_crass', 'disc_crass',
+    'crass_adaptive', 'coteaching_crass',
+    'baseline_cs', 'baseline_cs_adaptive',
+    'crass_cs', 'coteaching_cs', 'crass_adaptive_cs',
 ]
 
 METHOD_DISPLAY = {
@@ -37,6 +40,13 @@ METHOD_DISPLAY = {
     'gmm_filter_crass': 'GMM+CRASS',
     'dividemix_crass': 'DivideMix+CRASS',
     'disc_crass': 'DISC+CRASS',
+    'crass_adaptive': 'CRASS Adaptive',
+    'coteaching_crass': 'CT+CRASS',
+    'baseline_cs': 'Baseline+CS',
+    'baseline_cs_adaptive': 'Baseline+CS-A',
+    'crass_cs': 'CRASS+CS',
+    'coteaching_cs': 'CT+CS',
+    'crass_adaptive_cs': 'CRASS-A+CS',
 }
 
 NOISE_ORDER = [0.0, 0.2, 0.4, 0.6]
