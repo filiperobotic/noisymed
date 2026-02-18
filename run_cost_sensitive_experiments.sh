@@ -26,8 +26,10 @@
 set -e
 
 # ── Configuration ─────────────────────────────────────────────────────────
-DATASETS=("dermamnist_bin" "pathmnist_bin")
-NOISE_RATES=("0.0" "0.2" "0.4" "0.6")
+#DATASETS=("dermamnist_bin" "pathmnist_bin")
+DATASETS=("dermamnist_bin")
+#NOISE_RATES=("0.0" "0.2" "0.4" "0.6")
+NOISE_RATES=("0.0" "0.2" "0.4" )
 
 EPOCHS=200
 BATCH_SIZE=128
