@@ -13,14 +13,22 @@ Supported methods:
     - dividemix_crass:    DivideMix + CRASS (Proposed)
     - disc_crass:         DISC + CRASS (Proposed)
 
+    Cost-Sensitive variants:
+    - baseline_cs:        Baseline + Cost-Sensitive Loss
+    - coteaching_cs:      Co-teaching + Cost-Sensitive Loss
+    - gmm_filter_cs:      GMM Filter + Cost-Sensitive Loss
+    - dividemix_cs:       DivideMix + Cost-Sensitive Loss
+    - unicon_cs:          UNICON + Cost-Sensitive Loss
+    - disc_cs:            DISC + Cost-Sensitive Loss
+
 Usage:
     python train.py --method baseline --dataset pneumoniamnist --noise_rate 0.2
     python train.py --method coteaching --dataset breastmnist --noise_rate 0.4
     python train.py --method crass --dataset pneumoniamnist --noise_rate 0.2 --lambda_risk 10
     python train.py --method dividemix --dataset dermamnist_bin --noise_rate 0.2 --weighted_loss
     python train.py --method gmm_filter_crass --dataset pneumoniamnist --noise_rate 0.2 --lambda_risk 20
-    python train.py --method dividemix_crass --dataset pneumoniamnist --noise_rate 0.2 --lambda_risk 20
-    python train.py --method disc_crass --dataset pneumoniamnist --noise_rate 0.2 --lambda_risk 20
+    python train.py --method baseline_cs --dataset dermamnist_bin --noise_rate 0.2 --lambda_risk 20
+    python train.py --method dividemix_cs --dataset dermamnist_bin --noise_rate 0.2 --lambda_risk 20
 """
 
 import sys
@@ -37,6 +45,13 @@ METHODS = {
     'gmm_filter_crass': 'train_gmm_filter_crass',
     'dividemix_crass':  'train_dividemix_crass',
     'disc_crass':       'train_disc_crass',
+    # Cost-Sensitive variants
+    'baseline_cs':      'train_baseline_cs',
+    'coteaching_cs':    'train_coteaching_cs',
+    'gmm_filter_cs':    'train_filter_loss_cs',
+    'dividemix_cs':     'train_dividemix_cs',
+    'unicon_cs':        'train_unicon_cs',
+    'disc_cs':          'train_disc_cs',
 }
 
 
