@@ -71,108 +71,108 @@ echo ""
 # 1. Baseline + Cost-Sensitive Loss (fixed lambda)
 # ══════════════════════════════════════════════════════════════════════════
 
-if [ "$FILTER" = "all" ] || [ "$FILTER" = "baseline_cs" ]; then
-    echo ""
-    echo "══════════════════════════════════════════════════════════════"
-    echo "  EXPERIMENT 1: Baseline + Cost-Sensitive Loss (fixed lambda)"
-    echo "══════════════════════════════════════════════════════════════"
+# if [ "$FILTER" = "all" ] || [ "$FILTER" = "baseline_cs" ]; then
+#     echo ""
+#     echo "══════════════════════════════════════════════════════════════"
+#     echo "  EXPERIMENT 1: Baseline + Cost-Sensitive Loss (fixed lambda)"
+#     echo "══════════════════════════════════════════════════════════════"
 
-    for DATASET in "${DATASETS[@]}"; do
-        for NOISE in "${NOISE_RATES[@]}"; do
-            CURRENT=$((CURRENT + 1))
-            echo ""
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "  [$CURRENT] baseline_cs | $DATASET | noise=$NOISE | lambda=$LAMBDA_RISK"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+#     for DATASET in "${DATASETS[@]}"; do
+#         for NOISE in "${NOISE_RATES[@]}"; do
+#             CURRENT=$((CURRENT + 1))
+#             echo ""
+#             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+#             echo "  [$CURRENT] baseline_cs | $DATASET | noise=$NOISE | lambda=$LAMBDA_RISK"
+#             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-            python train_baseline_cs.py \
-                --dataset $DATASET \
-                --noise_rate $NOISE \
-                --epochs $EPOCHS \
-                --batch_size $BATCH_SIZE \
-                --lr $LR \
-                --seed $SEED \
-                --output_dir $OUTPUT_DIR \
-                --data_dir $DATA_DIR \
-                --lambda_risk $LAMBDA_RISK \
-                --print_freq 20
+#             python train_baseline_cs.py \
+#                 --dataset $DATASET \
+#                 --noise_rate $NOISE \
+#                 --epochs $EPOCHS \
+#                 --batch_size $BATCH_SIZE \
+#                 --lr $LR \
+#                 --seed $SEED \
+#                 --output_dir $OUTPUT_DIR \
+#                 --data_dir $DATA_DIR \
+#                 --lambda_risk $LAMBDA_RISK \
+#                 --print_freq 20
 
-            echo "  [$CURRENT] DONE"
-        done
-    done
-fi
+#             echo "  [$CURRENT] DONE"
+#         done
+#     done
+# fi
 
-# ══════════════════════════════════════════════════════════════════════════
-# 2. Baseline + Cost-Sensitive Loss (adaptive lambda)
-# ══════════════════════════════════════════════════════════════════════════
+# # ══════════════════════════════════════════════════════════════════════════
+# # 2. Baseline + Cost-Sensitive Loss (adaptive lambda)
+# # ══════════════════════════════════════════════════════════════════════════
 
-if [ "$FILTER" = "all" ] || [ "$FILTER" = "baseline_cs_adapt" ]; then
-    echo ""
-    echo "══════════════════════════════════════════════════════════════"
-    echo "  EXPERIMENT 2: Baseline + CS (adaptive lambda)"
-    echo "══════════════════════════════════════════════════════════════"
+# if [ "$FILTER" = "all" ] || [ "$FILTER" = "baseline_cs_adapt" ]; then
+#     echo ""
+#     echo "══════════════════════════════════════════════════════════════"
+#     echo "  EXPERIMENT 2: Baseline + CS (adaptive lambda)"
+#     echo "══════════════════════════════════════════════════════════════"
 
-    for DATASET in "${DATASETS[@]}"; do
-        for NOISE in "${NOISE_RATES[@]}"; do
-            CURRENT=$((CURRENT + 1))
-            echo ""
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "  [$CURRENT] baseline_cs_adaptive | $DATASET | noise=$NOISE | lambda=$LAMBDA_RISK"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+#     for DATASET in "${DATASETS[@]}"; do
+#         for NOISE in "${NOISE_RATES[@]}"; do
+#             CURRENT=$((CURRENT + 1))
+#             echo ""
+#             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+#             echo "  [$CURRENT] baseline_cs_adaptive | $DATASET | noise=$NOISE | lambda=$LAMBDA_RISK"
+#             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-            python train_baseline_cs.py \
-                --dataset $DATASET \
-                --noise_rate $NOISE \
-                --epochs $EPOCHS \
-                --batch_size $BATCH_SIZE \
-                --lr $LR \
-                --seed $SEED \
-                --output_dir $OUTPUT_DIR \
-                --data_dir $DATA_DIR \
-                --lambda_risk $LAMBDA_RISK \
-                --adaptive_lambda \
-                --print_freq 20
+#             python train_baseline_cs.py \
+#                 --dataset $DATASET \
+#                 --noise_rate $NOISE \
+#                 --epochs $EPOCHS \
+#                 --batch_size $BATCH_SIZE \
+#                 --lr $LR \
+#                 --seed $SEED \
+#                 --output_dir $OUTPUT_DIR \
+#                 --data_dir $DATA_DIR \
+#                 --lambda_risk $LAMBDA_RISK \
+#                 --adaptive_lambda \
+#                 --print_freq 20
 
-            echo "  [$CURRENT] DONE"
-        done
-    done
-fi
+#             echo "  [$CURRENT] DONE"
+#         done
+#     done
+# fi
 
-# ══════════════════════════════════════════════════════════════════════════
-# 3. CRASS + Cost-Sensitive Loss
-# ══════════════════════════════════════════════════════════════════════════
+# # ══════════════════════════════════════════════════════════════════════════
+# # 3. CRASS + Cost-Sensitive Loss
+# # ══════════════════════════════════════════════════════════════════════════
 
-if [ "$FILTER" = "all" ] || [ "$FILTER" = "crass_cs" ]; then
-    echo ""
-    echo "══════════════════════════════════════════════════════════════"
-    echo "  EXPERIMENT 3: CRASS + Cost-Sensitive Loss"
-    echo "══════════════════════════════════════════════════════════════"
+# if [ "$FILTER" = "all" ] || [ "$FILTER" = "crass_cs" ]; then
+#     echo ""
+#     echo "══════════════════════════════════════════════════════════════"
+#     echo "  EXPERIMENT 3: CRASS + Cost-Sensitive Loss"
+#     echo "══════════════════════════════════════════════════════════════"
 
-    for DATASET in "${DATASETS[@]}"; do
-        for NOISE in "${NOISE_RATES[@]}"; do
-            CURRENT=$((CURRENT + 1))
-            echo ""
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "  [$CURRENT] crass_cs | $DATASET | noise=$NOISE | lambda=$LAMBDA_RISK"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+#     for DATASET in "${DATASETS[@]}"; do
+#         for NOISE in "${NOISE_RATES[@]}"; do
+#             CURRENT=$((CURRENT + 1))
+#             echo ""
+#             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+#             echo "  [$CURRENT] crass_cs | $DATASET | noise=$NOISE | lambda=$LAMBDA_RISK"
+#             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-            python train_crass_cs.py \
-                --dataset $DATASET \
-                --noise_rate $NOISE \
-                --epochs $EPOCHS \
-                --batch_size $BATCH_SIZE \
-                --lr $LR \
-                --seed $SEED \
-                --output_dir $OUTPUT_DIR \
-                --data_dir $DATA_DIR \
-                --lambda_risk $LAMBDA_RISK \
-                --warmup_epochs $WARMUP \
-                --print_freq 20
+#             python train_crass_cs.py \
+#                 --dataset $DATASET \
+#                 --noise_rate $NOISE \
+#                 --epochs $EPOCHS \
+#                 --batch_size $BATCH_SIZE \
+#                 --lr $LR \
+#                 --seed $SEED \
+#                 --output_dir $OUTPUT_DIR \
+#                 --data_dir $DATA_DIR \
+#                 --lambda_risk $LAMBDA_RISK \
+#                 --warmup_epochs $WARMUP \
+#                 --print_freq 20
 
-            echo "  [$CURRENT] DONE"
-        done
-    done
-fi
+#             echo "  [$CURRENT] DONE"
+#         done
+#     done
+# fi
 
 # ══════════════════════════════════════════════════════════════════════════
 # 4. Co-teaching + Cost-Sensitive Loss
